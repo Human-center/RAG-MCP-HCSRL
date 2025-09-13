@@ -215,7 +215,7 @@ def format_stats(stats: Dict[str, Any]) -> str:
 """
 
     if stats.get("unique_files"):
-        formatted += f"📄 Unique Files: {stats["unique_files"]}\n"
+        formatted += f"📄 Unique Files: {stats['unique_files']}\n"
 
     if stats.get("all_filenames"):
         formatted += "\nFiles in Collection:\n"
