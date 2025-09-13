@@ -1,0 +1,155 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# ChromaDB / Vector Database
+chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+
+
+# Model files and caches
+models/
+.cache/
+*.model
+*.pkl
+*.pickle
+transformers_cache/
+sentence_transformers_cache/
+huggingface_hub/
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# PyTorch
+*.pth
+*.pt
+
+# Configuration files (keep templates)
+config.json
+*_config.json
+!claude_desktop_config.json.example
+!config.json.template
+
+# API keys and secrets
+*.key
+*.pem
+secrets/
+credentials/
+
+# Backup files
+*.backup
+*.bak
+backup/
+backups/
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Local development
+local/
+.local/
+dev/
+development/
+
+# Performance and profiling
+*.prof
+*.profile
+prof/
+
+# Documentation builds
+docs/_build/
+site/
+
+# MCP specific
+mcp_logs/
+.mcp/
+
+# FastAPI
+.fastapi/
+
+# NLTK data (downloaded models)
+nltk_data/
+
+# Sentence Transformers cache
+.sentence_transformers/
+
+# HuggingFace cache
+.huggingface/
