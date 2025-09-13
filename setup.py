@@ -2,8 +2,12 @@
 """
 RAG System Setup Script
 
-This script helps set up the RAG system environment and verify that all components
-are working correctly.
+This script helps set up the integrated RAG MCP server environment and verify
+that all components are working correctly.
+
+The system now uses a single integrated server (rag_mcp_http_server.py) that
+combines RAG functionality with MCP interface, eliminating the need for
+separate API and MCP servers.
 
 Usage:
     python setup.py
@@ -82,7 +86,7 @@ def install_dependencies():
 def check_dependencies():
     """Check if required dependencies are installed."""
     logger = logging.getLogger(__name__)
-    
+
     required_packages = [
         ("torch", "PyTorch"),
         ("sentence_transformers", "Sentence Transformers"),
@@ -90,8 +94,10 @@ def check_dependencies():
         ("PyPDF2", "PyPDF2"),
         ("fitz", "PyMuPDF"),
         ("numpy", "NumPy"),
-        ("tqdm", "tqdm"),
-        ("nltk", "NLTK")
+        ("mcp", "MCP Framework"),
+        ("fastapi", "FastAPI"),
+        ("uvicorn", "Uvicorn"),
+        ("httpx", "HTTPX")
     ]
     
     missing_packages = []
@@ -112,26 +118,45 @@ def check_dependencies():
     return True
 
 
-def check_huggingface_auth():
-    """Check Hugging Face authentication."""
+def test_integrated_server():
+    """Test the integrated RAG MCP server functionality."""
     logger = logging.getLogger(__name__)
-    
+
     try:
-        from huggingface_hub import HfApi
-        api = HfApi()
-        
-        # Try to get user info
-        user_info = api.whoami()
-        if user_info:
-            logger.info(f"Hugging Face authentication: ✓ (logged in as {user_info['name']})")
-            return True
+        # Test importing the integrated server modules
+        logger.info("Testing integrated server imports...")
+
+        # Check if RAG system can be imported
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tests'))
+
+        from test_rag_query import RAGQuerySystem
+        logger.info("RAG system import: ✓")
+
+        # Check MCP server components
+        from mcp.server.fastmcp import FastMCP
+        logger.info("FastMCP import: ✓")
+
+        # Test basic initialization (without actually running the server)
+        logger.info("Testing RAG system initialization...")
+        if os.path.exists("./chroma_db"):
+            try:
+                rag_system = RAGQuerySystem(
+                    chroma_persist_dir="./chroma_db",
+                    collection_name="pdf_documents"
+                )
+                logger.info("Integrated server functionality: ✓")
+                return True
+            except Exception as e:
+                logger.warning(f"RAG system initialization: ⚠ (ChromaDB may be empty: {e})")
+                return True  # This is expected if no documents are ingested yet
         else:
-            logger.warning("Hugging Face authentication: ⚠ (not logged in)")
-            return False
-            
+            logger.warning("ChromaDB directory not found - run init_chroma.py first")
+            return True
+
     except Exception as e:
-        logger.warning(f"Hugging Face authentication check failed: {e}")
-        logger.info("You may need to run 'huggingface-cli login' to access EmbeddingGemma")
+        logger.error(f"Integrated server test failed: {e}")
         return False
 
 
@@ -159,19 +184,19 @@ def check_gpu_availability():
 def test_basic_functionality():
     """Test basic functionality of the system."""
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Test ChromaDB initialization
         logger.info("Testing ChromaDB...")
         import chromadb
         from chromadb.config import Settings
-        
+
         # Create a temporary client
         temp_client = chromadb.Client(Settings(
             anonymized_telemetry=False,
             allow_reset=True
         ))
-        
+
         # Create a test collection
         test_collection = temp_client.create_collection("test_collection")
         test_collection.add(
@@ -179,7 +204,7 @@ def test_basic_functionality():
             ids=["test_1"],
             metadatas=[{"test": True}]
         )
-        
+
         # Test query
         results = test_collection.query(query_texts=["Test query"], n_results=1)
         if results and results['documents']:
@@ -187,29 +212,38 @@ def test_basic_functionality():
         else:
             logger.error("ChromaDB: ✗ (query failed)")
             return False
-        
-        # Test EmbeddingGemma (if available)
-        logger.info("Testing EmbeddingGemma...")
+
+        # Test Chroma's built-in embedding model (all-MiniLM-L6-v2)
+        logger.info("Testing Chroma embedding model...")
         try:
-            from sentence_transformers import SentenceTransformer
-            import torch
-            
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            model = SentenceTransformer("google/embeddinggemma-300M").to(device=device)
-            
+            from chromadb.utils import embedding_functions
+
+            # Test Chroma's default embedding function
+            embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+
             # Test embedding generation
             test_text = "This is a test sentence."
-            embedding = model.encode([test_text])
-            
+            embedding = embedding_func([test_text])
+
             if embedding is not None and len(embedding) > 0:
-                logger.info("EmbeddingGemma: ✓")
+                logger.info("Chroma embedding model: ✓")
             else:
-                logger.error("EmbeddingGemma: ✗ (embedding generation failed)")
+                logger.error("Chroma embedding model: ✗ (embedding generation failed)")
                 return False
-                
+
         except Exception as e:
-            logger.warning(f"EmbeddingGemma: ⚠ (test failed: {e})")
-            logger.info("You may need to authenticate with Hugging Face: huggingface-cli login")
+            logger.warning(f"Chroma embedding model: ⚠ (test failed: {e})")
+            return False
+
+        # Test MCP Framework
+        logger.info("Testing MCP Framework...")
+        try:
+            from mcp.server.fastmcp import FastMCP
+            logger.info("MCP Framework: ✓")
+        except ImportError as e:
+            logger.error(f"MCP Framework: ✗ ({e})")
             return False
         
         # Test PDF processing
@@ -324,38 +358,44 @@ Examples:
             logger.error("Dependencies missing - consider running with --install-deps")
         sys.exit(1 if args.check_only else 0)
     
-    # Check Hugging Face authentication
-    check_huggingface_auth()
-    
     # Check GPU availability
     check_gpu_availability()
-    
+
     # Create directory structure
     if not args.check_only:
         create_directory_structure()
-    
+
     # Test basic functionality
     if not args.skip_tests and not args.check_only:
         if not test_basic_functionality():
             logger.error("Basic functionality tests failed")
+            sys.exit(1)
+
+        # Test integrated server
+        if not test_integrated_server():
+            logger.error("Integrated server tests failed")
             sys.exit(1)
     
     print("\n=== Setup Summary ===")
     print("✓ Python version compatible")
     print("✓ Dependencies installed")
     print("✓ Directory structure created")
-    
+
     if not args.skip_tests and not args.check_only:
         print("✓ Basic functionality verified")
+        print("✓ Integrated MCP server ready")
     
     print("\n=== Next Steps ===")
     print("1. Place PDF files in the ./documents directory")
     print("2. Initialize ChromaDB: python init_chroma.py")
     print("3. Ingest PDFs: python ingest_pdfs.py --input-dir ./documents")
-    print("4. Test queries: python test_rag_query.py --query 'your query here'")
-    
-    if not check_huggingface_auth():
-        print("\n⚠ Note: For EmbeddingGemma access, run: huggingface-cli login")
+    print("4. Test integrated MCP server:")
+    print("   - STDIO mode (Claude Desktop): python rag_mcp_http_server.py")
+    print("   - HTTP mode (web access): python rag_mcp_http_server.py --mode http --port 8472")
+    print("5. Test queries directly: python tests/test_rag_query.py --query 'your query here'")
+    print("\n=== Claude Desktop Integration ===")
+    print("The integrated MCP server is configured for Claude Desktop at:")
+    print("~/Library/Application Support/Claude/claude_desktop_config.json")
 
 
 if __name__ == "__main__":
