@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rag-server": {
+      "url": "http://localhost:8472/mcp",
+      "name": "RAG Database Server"
+    }
+  }
+}
